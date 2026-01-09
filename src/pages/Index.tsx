@@ -78,7 +78,7 @@ const Index = () => {
     }
   };
 
-  const recentUsers = users.slice(0, 4);
+  const recentUsers = (users || []).slice(0, 4);
 
   const menuItems = [
     { id: 'dashboard', icon: 'LayoutDashboard', label: 'Дашборд' },
