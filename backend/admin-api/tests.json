@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "Get statistics",
+      "method": "GET",
+      "path": "/?action=stats",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get users list",
+      "method": "GET",
+      "path": "/?action=users",
+      "expectedStatus": 200
+    }
+  ]
+}

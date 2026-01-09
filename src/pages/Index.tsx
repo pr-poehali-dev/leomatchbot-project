@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -17,22 +17,68 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 
+const API_URL = 'https://functions.poehali.dev/10e0f84a-62e5-4319-b7d3-919727530b57';
+
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeMatches: 0,
+    todayMessages: 0,
+    pendingModeration: 0,
+    usersGrowth: 0,
+    matchesGrowth: 0,
+    dailyActivity: [] as any[],
+  });
+  const [users, setUsers] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const stats = {
-    totalUsers: 2847,
-    activeMatches: 156,
-    todayMessages: 1234,
-    pendingModeration: 23,
+  useEffect(() => {
+    loadData();
+  }, [activeSection]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      if (activeSection === 'dashboard') {
+        const statsRes = await fetch(`${API_URL}?action=stats`);
+        const statsData = await statsRes.json();
+        setStats(statsData);
+
+        const usersRes = await fetch(`${API_URL}?action=users&status=all`);
+        const usersData = await usersRes.json();
+        setUsers(usersData.users.slice(0, 4));
+      } else if (activeSection === 'users' || activeSection === 'moderation') {
+        const usersRes = await fetch(`${API_URL}?action=users&status=all`);
+        const usersData = await usersRes.json();
+        setUsers(usersData.users);
+      } else if (activeSection === 'messages') {
+        const matchesRes = await fetch(`${API_URL}?action=matches`);
+        const matchesData = await matchesRes.json();
+        setMatches(matchesData.matches);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentUsers = [
-    { id: 1, name: 'Анна К.', age: 24, status: 'active', avatar: '', verified: true },
-    { id: 2, name: 'Дмитрий М.', age: 28, status: 'moderation', avatar: '', verified: false },
-    { id: 3, name: 'Елена С.', age: 26, status: 'active', avatar: '', verified: true },
-    { id: 4, name: 'Алексей П.', age: 30, status: 'banned', avatar: '', verified: false },
-  ];
+  const handleModerate = async (userId: number, action: 'approve' | 'reject') => {
+    try {
+      await fetch(`${API_URL}?action=moderate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, action }),
+      });
+      loadData();
+    } catch (error) {
+      console.error('Error moderating user:', error);
+    }
+  };
+
+  const recentUsers = users.slice(0, 4);
 
   const menuItems = [
     { id: 'dashboard', icon: 'LayoutDashboard', label: 'Дашборд' },
@@ -109,7 +155,7 @@ const Index = () => {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="bg-green-100 text-green-700">
-                        +12.5%
+                        +{stats.usersGrowth}%
                       </Badge>
                       <span className="text-muted-foreground">за неделю</span>
                     </div>
@@ -127,7 +173,7 @@ const Index = () => {
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="bg-green-100 text-green-700">
-                        +8.3%
+                        +{stats.matchesGrowth}%
                       </Badge>
                       <span className="text-muted-foreground">за неделю</span>
                     </div>
@@ -269,21 +315,24 @@ const Index = () => {
 
                   <TabsContent value="pending" className="mt-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {[1, 2, 3].map((i) => (
-                        <Card key={i} className="overflow-hidden">
+                      {users.filter(u => !u.verified).slice(0, 6).map((user) => (
+                        <Card key={user.id} className="overflow-hidden">
                           <div className="aspect-square bg-gradient-to-br from-primary/20 to-primary/5" />
                           <div className="p-4 space-y-4">
                             <div>
-                              <h4 className="font-semibold">Пользователь #{i}</h4>
-                              <p className="text-sm text-muted-foreground">25 лет, Москва</p>
+                              <h4 className="font-semibold">{user.first_name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {user.age ? `${user.age} лет` : 'Возраст не указан'}, {user.city || 'Город не указан'}
+                              </p>
+                              {user.bio && <p className="text-xs text-muted-foreground mt-2">{user.bio}</p>}
                             </div>
                             <Separator />
                             <div className="flex gap-2">
-                              <Button size="sm" className="flex-1">
+                              <Button size="sm" className="flex-1" onClick={() => handleModerate(user.id, 'approve')}>
                                 <Icon name="Check" size={16} />
                                 Одобрить
                               </Button>
-                              <Button size="sm" variant="destructive" className="flex-1">
+                              <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleModerate(user.id, 'reject')}>
                                 <Icon name="X" size={16} />
                                 Отклонить
                               </Button>
@@ -301,31 +350,39 @@ const Index = () => {
               <div className="space-y-6 animate-fade-in">
                 <Card className="p-6">
                   <h3 className="font-semibold mb-4">Активные диалоги</h3>
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
-                      >
-                        <div className="flex -space-x-2">
-                          <Avatar className="border-2 border-white">
-                            <AvatarFallback>А</AvatarFallback>
-                          </Avatar>
-                          <Avatar className="border-2 border-white">
-                            <AvatarFallback>Д</AvatarFallback>
-                          </Avatar>
+                  {loading ? (
+                    <p className="text-center text-muted-foreground py-8">Загрузка...</p>
+                  ) : matches.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Нет активных диалогов</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {matches.map((match) => (
+                        <div
+                          key={match.id}
+                          className="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        >
+                          <div className="flex -space-x-2">
+                            <Avatar className="border-2 border-white">
+                              <AvatarFallback>{match.user1_name?.slice(0, 2)}</AvatarFallback>
+                            </Avatar>
+                            <Avatar className="border-2 border-white">
+                              <AvatarFallback>{match.user2_name?.slice(0, 2)}</AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">
+                              {match.user1_name} и {match.user2_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Создан {new Date(match.created_at).toLocaleDateString('ru-RU')}
+                            </p>
+                          </div>
+                          <Badge>{match.message_count} сообщений</Badge>
+                          <Icon name="ChevronRight" size={18} className="text-muted-foreground" />
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">Анна К. и Дмитрий М.</p>
-                          <p className="text-xs text-muted-foreground">
-                            Последнее сообщение 5 минут назад
-                          </p>
-                        </div>
-                        <Badge>42 сообщения</Badge>
-                        <Icon name="ChevronRight" size={18} className="text-muted-foreground" />
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </Card>
               </div>
             )}
