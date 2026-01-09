@@ -267,11 +267,11 @@ const Index = () => {
                         >
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+                              <AvatarFallback>{(user.first_name || user.name || 'U').slice(0, 2)}</AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">{user.name}</span>
+                                <span className="font-medium text-sm">{user.first_name || user.name || 'User'}</span>
                                 {user.verified && (
                                   <Icon name="BadgeCheck" size={14} className="text-primary" />
                                 )}
@@ -405,11 +405,11 @@ const Index = () => {
                       >
                         <div className="flex items-center gap-4">
                           <Avatar>
-                            <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+                            <AvatarFallback>{(user.first_name || user.name || 'U').slice(0, 2)}</AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{user.name}</span>
+                              <span className="font-medium">{user.first_name || user.name || 'User'}</span>
                               {user.verified && (
                                 <Icon name="BadgeCheck" size={16} className="text-primary" />
                               )}
