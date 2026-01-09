@@ -48,15 +48,15 @@ const Index = () => {
 
         const usersRes = await fetch(`${API_URL}?action=users&status=all`);
         const usersData = await usersRes.json();
-        setUsers(usersData.users.slice(0, 4));
+        setUsers((usersData.users || []).slice(0, 4));
       } else if (activeSection === 'users' || activeSection === 'moderation') {
         const usersRes = await fetch(`${API_URL}?action=users&status=all`);
         const usersData = await usersRes.json();
-        setUsers(usersData.users);
+        setUsers(usersData.users || []);
       } else if (activeSection === 'messages') {
         const matchesRes = await fetch(`${API_URL}?action=matches`);
         const matchesData = await matchesRes.json();
-        setMatches(matchesData.matches);
+        setMatches(matchesData.matches || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
