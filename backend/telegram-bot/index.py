@@ -139,21 +139,18 @@ def handle_start(chat_id: int, user_data: dict) -> dict:
         
         send_message(chat_id, welcome_text)
     else:
-        if user['status'] == 'pending' or text == '🏠 Главное меню':
-            return handle_start(chat_id, user_data)
-        else:
-            menu_text = """🎯 <b>Главное меню</b>
+        menu_text = """🎯 <b>Главное меню</b>
 
 Используй кнопки ниже для навигации"""
-            keyboard = {
-                'keyboard': [
-                    [{'text': '👤 Моя анкета'}, {'text': '🔍 Найти пару'}],
-                    [{'text': '⏸ Остановить поиск'}, {'text': '⚙️ Настройки'}]
-                ],
-                'resize_keyboard': True,
-                'one_time_keyboard': False
-            }
-            send_message(chat_id, menu_text, keyboard)
+        keyboard = {
+            'keyboard': [
+                [{'text': '👤 Моя анкета'}, {'text': '🔍 Найти пару'}],
+                [{'text': '⏸ Остановить поиск'}, {'text': '⚙️ Настройки'}]
+            ],
+            'resize_keyboard': True,
+            'one_time_keyboard': False
+        }
+        send_message(chat_id, menu_text, keyboard)
     
     cur.close()
     conn.close()
