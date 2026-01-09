@@ -56,8 +56,14 @@ def handler(event: dict, context) -> dict:
             return handle_profile(chat_id, user_data)
         elif text.startswith('/search'):
             return handle_search(chat_id, user_data)
-        elif text.startswith('/stop'):
+        elif text.startswith('/stop') or text == '⏸ Остановить поиск':
             return handle_stop(chat_id, user_data)
+        elif text == '👤 Моя анкета':
+            return handle_profile(chat_id, user_data)
+        elif text == '🔍 Найти пару':
+            return handle_search(chat_id, user_data)
+        elif text == '⚙️ Настройки':
+            return handle_settings(chat_id, user_data)
         else:
             # Обработка обычных сообщений в чате
             return handle_message(chat_id, user_data, text)
@@ -133,15 +139,21 @@ def handle_start(chat_id: int, user_data: dict) -> dict:
         
         send_message(chat_id, welcome_text)
     else:
-        if user['status'] == 'pending':
-            send_message(chat_id, "Ты уже начал регистрацию! Напиши свой возраст.")
+        if user['status'] == 'pending' or text == '🏠 Главное меню':
+            return handle_start(chat_id, user_data)
         else:
             menu_text = """🎯 <b>Главное меню</b>
 
-/profile - Моя анкета
-/search - Найти пару
-/stop - Остановить поиск"""
-            send_message(chat_id, menu_text)
+Используй кнопки ниже для навигации"""
+            keyboard = {
+                'keyboard': [
+                    [{'text': '👤 Моя анкета'}, {'text': '🔍 Найти пару'}],
+                    [{'text': '⏸ Остановить поиск'}, {'text': '⚙️ Настройки'}]
+                ],
+                'resize_keyboard': True,
+                'one_time_keyboard': False
+            }
+            send_message(chat_id, menu_text, keyboard)
     
     cur.close()
     conn.close()
@@ -173,7 +185,14 @@ def handle_profile(chat_id: int, user_data: dict) -> dict:
 О себе: {user['bio']}
 
 Статус: {"✅ Верифицирован" if user['verified'] else "⏳ На модерации"}"""
-        send_message(chat_id, profile_text)
+        keyboard = {
+            'keyboard': [
+                [{'text': '🔍 Найти пару'}],
+                [{'text': '🏠 Главное меню'}]
+            ],
+            'resize_keyboard': True
+        }
+        send_message(chat_id, profile_text, keyboard)
     else:
         send_message(chat_id, "Анкета не заполнена. Используй /start для регистрации.")
     
@@ -241,8 +260,15 @@ def handle_search(chat_id: int, user_data: dict) -> dict:
 
 Можешь начать общение прямо сейчас!"""
         
-        send_message(chat_id, match_text)
-        send_message(match_user['telegram_id'], f"🎉 У тебя новая пара: {current_user['first_name']}!")
+        keyboard = {
+            'keyboard': [
+                [{'text': '💬 Написать сообщение'}],
+                [{'text': '⏭ Следующая анкета'}, {'text': '🏠 Главное меню'}]
+            ],
+            'resize_keyboard': True
+        }
+        send_message(chat_id, match_text, keyboard)
+        send_message(match_user['telegram_id'], f"🎉 У тебя новая пара: {current_user['first_name']}!", keyboard)
     else:
         send_message(chat_id, "К сожалению, сейчас нет доступных пользователей. Попробуй позже!")
     
@@ -274,7 +300,14 @@ def handle_stop(chat_id: int, user_data: dict) -> dict:
             WHERE (user1_id = %s OR user2_id = %s) AND status = 'active'
         """, (user['id'], user['id']))
         conn.commit()
-        send_message(chat_id, "Все активные диалоги остановлены.")
+        keyboard = {
+            'keyboard': [
+                [{'text': '🔍 Найти пару'}],
+                [{'text': '🏠 Главное меню'}]
+            ],
+            'resize_keyboard': True
+        }
+        send_message(chat_id, "Все активные диалоги остановлены.", keyboard)
     
     cur.close()
     conn.close()
@@ -312,7 +345,7 @@ def handle_message(chat_id: int, user_data: dict, text: str) -> dict:
                 if 18 <= age <= 100:
                     cur.execute("UPDATE users SET age = %s WHERE id = %s", (age, user['id']))
                     conn.commit()
-                    send_message(chat_id, "Отлично! Теперь напиши свой город.")
+                    send_message(chat_id, "✅ Отлично! Теперь напиши свой город.")
                 else:
                     send_message(chat_id, "Возраст должен быть от 18 до 100 лет.")
             except ValueError:
@@ -321,12 +354,20 @@ def handle_message(chat_id: int, user_data: dict, text: str) -> dict:
             # Ожидаем город
             cur.execute("UPDATE users SET city = %s WHERE id = %s", (text, user['id']))
             conn.commit()
-            send_message(chat_id, "Супер! Расскажи немного о себе (интересы, хобби).")
+            send_message(chat_id, "✅ Супер! Расскажи немного о себе (интересы, хобби).")
         elif user['bio'] is None:
             # Ожидаем описание
             cur.execute("UPDATE users SET bio = %s, status = 'active' WHERE id = %s", (text, user['id']))
             conn.commit()
-            send_message(chat_id, "✅ Анкета заполнена! Она отправлена на модерацию.\n\nИспользуй /search чтобы найти пару!")
+            success_text = "✅ Анкета заполнена! Она отправлена на модерацию.\n\nТеперь можешь искать пару!"
+            keyboard = {
+                'keyboard': [
+                    [{'text': '🔍 Найти пару'}],
+                    [{'text': '👤 Моя анкета'}, {'text': '🏠 Главное меню'}]
+                ],
+                'resize_keyboard': True
+            }
+            send_message(chat_id, success_text, keyboard)
     else:
         # Если пользователь в активном матче, пересылаем сообщение
         cur.execute("""
@@ -354,7 +395,14 @@ def handle_message(chat_id: int, user_data: dict, text: str) -> dict:
             # Отправляем сообщение собеседнику
             send_message(recipient_tid, f"💬 <b>Сообщение:</b>\n\n{text}")
         else:
-            send_message(chat_id, "У тебя нет активных диалогов. Используй /search чтобы найти пару!")
+            keyboard = {
+                'keyboard': [
+                    [{'text': '🔍 Найти пару'}],
+                    [{'text': '🏠 Главное меню'}]
+                ],
+                'resize_keyboard': True
+            }
+            send_message(chat_id, "У тебя нет активных диалогов. Найди пару, чтобы начать общение!", keyboard)
     
     cur.close()
     conn.close()
@@ -367,9 +415,32 @@ def handle_message(chat_id: int, user_data: dict, text: str) -> dict:
     }
 
 
+def handle_settings(chat_id: int, user_data: dict) -> dict:
+    """Настройки пользователя"""
+    settings_text = """⚙️ <b>Настройки</b>
+
+Здесь ты сможешь:
+• Изменить фильтры поиска
+• Обновить анкету
+• Настроить уведомления"""
+    keyboard = {
+        'keyboard': [
+            [{'text': '✏️ Изменить анкету'}],
+            [{'text': '🏠 Главное меню'}]
+        ],
+        'resize_keyboard': True
+    }
+    send_message(chat_id, settings_text, keyboard)
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({'ok': True}),
+        'isBase64Encoded': False
+    }
+
+
 def handle_callback(callback_query: dict) -> dict:
     """Обработка нажатий на inline-кнопки"""
-    # Можно добавить обработку callback_data для различных действий
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'application/json'},
